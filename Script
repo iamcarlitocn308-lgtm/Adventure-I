@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Adventure Game</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #1e1e1e;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    canvas {
+      display: block;
+      margin: 20px auto;
+      border: 3px solid white;
+      background: #3a7d44;
+    }
+
+    #ui {
+      width: 800px;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Adventure Game</h1>
+  <canvas id="game" width="800" height="600"></canvas>
+  <div id="ui">Move with arrow keys</div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const player = {
+      x: 400,
+      y: 300,
+      size: 20,
+      speed: 4
+    };
+
+    const keys = {};
+
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
+
+    function update() {
+      if (keys["ArrowUp"]) player.y -= player.speed;
+      if (keys["ArrowDown"]) player.y += player.speed;
+      if (keys["ArrowLeft"]) player.x -= player.speed;
+      if (keys["ArrowRight"]) player.x += player.speed;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Player
+      ctx.fillStyle = "gold";
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+
+</body>
+</html>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+/* ======================
+   WORLD CONFIG
+====================== */
+const TILE_SIZE = 32;
+const MAP_WIDTH = 200;
+const MAP_HEIGHT = 200;
+
+/*
+0 = grass
+1 = water
+2 = mountain
+*/
+
+const map = [];
+
+// Generate huge map
+for (let y = 0; y < MAP_HEIGHT; y++) {
+  const row = [];
+  for (let x = 0; x < MAP_WIDTH; x++) {
+    let tile = 0;
+
+    // Water bands
+    if (Math.random() < 0.08) tile = 1;
+
+    // Mountains
+    if (Math.random() < 0.05) tile = 2;
+
+    row.push(tile);
+  }
+  map.push(row);
+}
+
+/* ======================
+   PLAYER
+====================== */
+const player = {
+  x: MAP_WIDTH * TILE_SIZE / 2,
+  y: MAP_HEIGHT * TILE_SIZE / 2,
+  size: 20,
+  speed: 4
+};
+
+/* ======================
+   INPUT
+====================== */
+const keys = {};
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+
+/* ======================
+   CAMERA
+====================== */
+const camera = {
+  x: 0,
+  y: 0
+};
+
+/* ======================
+   UPDATE
+====================== */
+function update() {
+  let nextX = player.x;
+  let nextY = player.y;
+
+  if (keys["ArrowUp"]) nextY -= player.speed;
+  if (keys["ArrowDown"]) nextY += player.speed;
+  if (keys["ArrowLeft"]) nextX -= player.speed;
+  if (keys["ArrowRight"]) nextX += player.speed;
+
+  // Collision with mountains
+  const tileX = Math.floor(nextX / TILE_SIZE);
+  const tileY = Math.floor(nextY / TILE_SIZE);
+
+  if (
+    tileX >= 0 && tileX < MAP_WIDTH &&
+    tileY >= 0 && tileY < MAP_HEIGHT &&
+    map[tileY][tileX] !== 2
+  ) {
+    player.x = nextX;
+    player.y = nextY;
+  }
+
+  // Camera follows player
+  camera.x = player.x - canvas.width / 2;
+  camera.y = player.y - canvas.height / 2;
+}
+
+/* ======================
+   DRAW MAP
+====================== */
+function drawMap() {
+  const startX = Math.floor(camera.x / TILE_SIZE);
+  const startY = Math.floor(camera.y / TILE_SIZE);
+
+  const endX = startX + Math.ceil(canvas.width / TILE_SIZE) + 1;
+  const endY = startY + Math.ceil(canvas.height / TILE_SIZE) + 1;
+
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) continue;
+
+      const tile = map[y][x];
+
+      if (tile === 0) ctx.fillStyle = "#3a7d44";     // grass
+      if (tile === 1) ctx.fillStyle = "#2f6fa3";     // water
+      if (tile === 2) ctx.fillStyle = "#777777";     // mountain
+
+      ctx.fillRect(
+        x * TILE_SIZE - camera.x,
+        y * TILE_SIZE - camera.y,
+        TILE_SIZE,
+        TILE_SIZE
+      );
+    }
+  }
+}
+
+/* ======================
+   DRAW PLAYER
+====================== */
+function drawPlayer() {
+  ctx.fillStyle = "gold";
+  ctx.fillRect(
+    player.x - camera.x - player.size / 2,
+    player.y - camera.y - player.size / 2,
+    player.size,
+    player.size
+  );
+}
+
+/* ======================
+   GAME LOOP
+====================== */
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  update();
+  drawMap();
+  drawPlayer();
+  requestAnimationFrame(gameLoop);
+}
